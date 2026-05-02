@@ -1,0 +1,21 @@
+# Build and binary folders
+bin/
+obj/
+out/
+target/
+*.exe
+*.dll
+*.class
+
+# IDE - VS Code
+.vscode/
+.history/
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+venv/
+.env
