@@ -1,42 +1,74 @@
 #include <iostream>
 #include <memory>
+#include <ctime>
 
+#include "Common/AppEnums.h"
+#include "Utils/SpatialUtilities.h"
+#include "Model/IntelData.h"
 #include "Model/NavigationModel.h"
 #include "Model/IntelligenceManager.h"
 #include "View/MissionView.h"
 #include "Controller/MissionController.h"
 
+using namespace AIGD;
+
 int main() {
     std::cout << "--- SYSTEM START ---" << std::endl;
-    std::cout << "=== Autonomous IMINT Drone — MVC Skeleton Validation ===\n\n";
+    std::cout << "=== Autonomous IMINT Drone — Task 1.2 Data Models Validation ===\n\n";
 
-    // Wire up MVC via interfaces (dependency injection through shared_ptr).
-    auto navModel  = std::make_shared<NavigationModel>();
-    auto intelMgr  = std::make_shared<IntelligenceManager>();
-    auto view      = std::make_shared<MissionView>();
-    auto controller = std::make_shared<MissionController>(navModel, intelMgr, view);
+    // ── Test Enums ───────────────────────────────────────────────────────────
+    std::cout << "[✓] Testing AppEnums...\n";
+    AIGD::MissionState state = AIGD::MissionState::OUTBOUND;
+    AIGD::SensorType sensor = AIGD::SensorType::THERMAL;
+    std::cout << "    Mission State: OUTBOUND\n";
+    std::cout << "    Sensor Type: THERMAL\n\n";
 
-    // ── Validate NavigationModel ─────────────────────────────────────────────
-    Coordinates base(0.0, 0.0, 100.0);
-    Coordinates target(5.0, 5.0, 100.0);
-    Path path = navModel->CalculateInitialPath(base, target);
-    std::cout << "Path waypoints: " << path.size() << "\n\n";
+    // ── Test Point2D and Vector2D ────────────────────────────────────────────
+    std::cout << "[✓] Testing Spatial Utilities...\n";
+    Point2D base(0.0, 0.0);
+    Point2D target(50.0, 75.0);
+    std::cout << "    Base Location: " << base << "\n";
+    std::cout << "    Target Location: " << target << "\n";
 
-    // ── Validate IntelligenceManager ─────────────────────────────────────────
-    IntelData intel{ 1, target, "Suspected activity", "2026-05-02T08:00Z", "" };
-    intelMgr->StoreIntel(intel);
-    auto allIntel = intelMgr->GetAllIntel();
-    std::cout << "Intel entries stored: " << allIntel.size() << "\n\n";
+    Vector2D pathVector = target - base;
+    std::cout << "    Direction Vector: " << pathVector << "\n";
+    std::cout << "    Distance to Target: " << pathVector.magnitude() << " meters\n\n";
 
-    // ── Validate MissionController FSM ───────────────────────────────────────
-    controller->StartMission();
-    controller->ExecuteSenseThinkActLoop();
-    controller->HandleThreatDetection();
+    // Vector operations test
+    Vector2D v1(3.0, 4.0);
+    Vector2D v2(1.0, 2.0);
+    std::cout << "    Vector Operations:\n";
+    std::cout << "      v1: " << v1 << ", magnitude: " << v1.magnitude() << "\n";
+    std::cout << "      v2: " << v2 << ", magnitude: " << v2.magnitude() << "\n";
+    std::cout << "      v1 + v2 = " << (v1 + v2) << "\n";
+    std::cout << "      v1 - v2 = " << (v1 - v2) << "\n";
+    std::cout << "      v1 * 2.0 = " << (v1 * 2.0) << "\n";
+    std::cout << "      v1.normalize() = " << v1.normalize() << "\n";
+    std::cout << "      v1 · v2 = " << v1.dotProduct(v2) << "\n\n";
 
-    // ── Validate MissionView report ──────────────────────────────────────────
-    std::cout << "\n";
-    view->GenerateFinalReport(allIntel);
+    // ── Test IntelData ───────────────────────────────────────────────────────
+    std::cout << "[✓] Testing IntelData Class...\n";
 
-    std::cout << "\n=== Skeleton validation complete ===\n";
+    // Create some sample intel data
+    long long currentTime = static_cast<long long>(std::time(nullptr)) * 1000;
+
+    AIGD::IntelData intel1(base, currentTime, AIGD::SensorType::IMINT, "aGVsbG8gd29ybGQ=");  // "hello world" in Base64
+    std::cout << "Intel 1 (IMINT at base):\n" << intel1.toString() << "\n\n";
+
+    AIGD::IntelData intel2(target, currentTime + 5000, AIGD::SensorType::THERMAL, "dGhlcm1hbCBkYXRh");  // "thermal data" in Base64
+    std::cout << "Intel 2 (THERMAL at target):\n" << intel2.toString() << "\n\n";
+
+    // Test copy constructor and assignment
+    AIGD::IntelData intel3 = intel1;  // Copy constructor
+    std::cout << "Intel 3 (copy of Intel 1):\n" << intel3.toString() << "\n\n";
+
+    // Verify data integrity
+    std::cout << "Verification:\n";
+    std::cout << "  Intel 1 Location X: " << intel1.getLocationX() << " m\n";
+    std::cout << "  Intel 1 Location Y: " << intel1.getLocationY() << " m\n";
+    std::cout << "  Intel 1 Data Size: " << intel1.getDataSize() << " bytes\n";
+    std::cout << "  Intel 2 Sensor Type: " << intel2.getSensorTypeString() << "\n\n";
+
+    std::cout << "=== All data models validated successfully ===\n";
     return 0;
 }

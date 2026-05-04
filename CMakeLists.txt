@@ -8,6 +8,8 @@ add_executable(ImintDrone
     src/main.cpp
     src/Model/NavigationModel.cpp
     src/Model/IntelligenceManager.cpp
+    src/Model/IntelData.cpp
+    src/Utils/SpatialUtilities.cpp
     src/View/MissionView.cpp
     src/Controller/MissionController.cpp
 )
