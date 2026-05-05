@@ -4,9 +4,10 @@
 
 #include "Common/AppEnums.h"
 #include "Utils/SpatialUtilities.h"
+#include "Utils/Base64Codec.h"
 #include "Model/IntelData.h"
+#include "Model/IntelManager.h"
 #include "Model/NavigationModel.h"
-#include "Model/IntelligenceManager.h"
 #include "View/MissionView.h"
 #include "Controller/MissionController.h"
 
@@ -17,14 +18,14 @@ int main() {
     std::cout << "=== Autonomous IMINT Drone — Task 1.2 Data Models Validation ===\n\n";
 
     // ── Test Enums ───────────────────────────────────────────────────────────
-    std::cout << "[✓] Testing AppEnums...\n";
+    std::cout << "Testing AppEnums...\n";
     AIGD::MissionState state = AIGD::MissionState::OUTBOUND;
     AIGD::SensorType sensor = AIGD::SensorType::THERMAL;
     std::cout << "    Mission State: OUTBOUND\n";
     std::cout << "    Sensor Type: THERMAL\n\n";
 
     // ── Test Point2D and Vector2D ────────────────────────────────────────────
-    std::cout << "[✓] Testing Spatial Utilities...\n";
+    std::cout << "Testing Spatial Utilities...\n";
     Point2D base(0.0, 0.0);
     Point2D target(50.0, 75.0);
     std::cout << "    Base Location: " << base << "\n";
@@ -44,10 +45,10 @@ int main() {
     std::cout << "      v1 - v2 = " << (v1 - v2) << "\n";
     std::cout << "      v1 * 2.0 = " << (v1 * 2.0) << "\n";
     std::cout << "      v1.normalize() = " << v1.normalize() << "\n";
-    std::cout << "      v1 · v2 = " << v1.dotProduct(v2) << "\n\n";
+    std::cout << "      v1 * v2 = " << v1.dotProduct(v2) << "\n\n";
 
     // ── Test IntelData ───────────────────────────────────────────────────────
-    std::cout << "[✓] Testing IntelData Class...\n";
+    std::cout << "Testing IntelData Class...\n";
 
     // Create some sample intel data
     long long currentTime = static_cast<long long>(std::time(nullptr)) * 1000;
@@ -69,6 +70,27 @@ int main() {
     std::cout << "  Intel 1 Data Size: " << intel1.getDataSize() << " bytes\n";
     std::cout << "  Intel 2 Sensor Type: " << intel2.getSensorTypeString() << "\n\n";
 
+    // ── Test IntelManager + Base64Codec ────────────────────────────────────
+    std::cout << "Testing IntelManager and Base64Codec...\n";
+    IntelManager intelManager;
+
+    const std::string rawPayload = "mission image bytes";
+    const std::string encodedPayload = Base64Codec::encode(rawPayload);
+    AIGD::IntelData encodedIntel(base, currentTime + 10000, SensorType::SIGNAL, encodedPayload);
+    intelManager.addIntel(encodedIntel);
+
+    auto retrievedIntel = intelManager.getIntel(encodedIntel.getTimestamp());
+    bool encodeDecodeSuccess = false;
+    if (retrievedIntel) {
+        const std::string decodedPayload = Base64Codec::decode(retrievedIntel->getRawData());
+        encodeDecodeSuccess = (decodedPayload == rawPayload);
+        std::cout << "  Retrieved Intel: " << retrievedIntel->toString() << "\n";
+        std::cout << "  Decoded Payload: " << decodedPayload << "\n";
+    }
+
+    std::cout << "  Base64 encode/decode test: "
+              << (encodeDecodeSuccess ? "SUCCESS" : "FAILURE") << "\n\n";
+
     std::cout << "=== All data models validated successfully ===\n";
-    return 0;
+    return encodeDecodeSuccess ? 0 : 1;
 }
