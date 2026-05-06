@@ -80,10 +80,11 @@ void OccupancyGrid::UpdateGridProbability(const Coordinates&         cell,
     
     // Determine observation: if any sensor reading indicates obstacle (> 0.5), flag it
     bool observedObstacle = false;
+    bool foundObstacle = false;
     for (double reading : sensorData) {
-        if (reading > 0.5) {
+        if (!foundObstacle && reading > 0.5) {
             observedObstacle = true;
-            break;
+            foundObstacle = true;
         }
     }
     
