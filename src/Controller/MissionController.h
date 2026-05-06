@@ -10,7 +10,7 @@
 class MissionController : public IMissionController {
 public:
     MissionController(std::shared_ptr<INavigationModel>    navModel,
-                      std::shared_ptr<IIntelligenceManager> intelMgr,
+                      std::shared_ptr<AIGD::IIntelligenceManager> intelMgr,
                       std::shared_ptr<IMissionView>         view);
 
     void StartMission() override;
@@ -19,7 +19,7 @@ public:
         
 private:
     std::shared_ptr<INavigationModel>    m_navModel;
-    std::shared_ptr<IIntelligenceManager> m_intelMgr;
+    std::shared_ptr<AIGD::IIntelligenceManager> m_intelMgr;
     std::shared_ptr<IMissionView>        m_view;
     MissionState                         m_state;
     Coordinates                          m_currentPosition;

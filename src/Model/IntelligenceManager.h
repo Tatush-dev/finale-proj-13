@@ -2,13 +2,18 @@
 #include "IIntelligenceManager.h"
 #include <unordered_map>
 
-// Backed by unordered_map for O(1) store/retrieve on IntelData::id.
+namespace AIGD {
+
+// Backed by unordered_map for O(1) store/retrieve on IntelData::timestamp.
 class IntelligenceManager : public IIntelligenceManager {
 public:
-    void StoreIntel(const IntelData& data) override;
-    IntelData RetrieveIntel(const Coordinates& location) override;
-    std::list<IntelData> GetAllIntel() const override;
+    void addIntel(const IntelData& data) override;
+    std::optional<IntelData> getIntel(long long timestamp) const override;
+    std::vector<IntelData> getAllIntel() const override;
 
 private:
-    std::unordered_map<int, IntelData> m_store;
+    std::unordered_map<long long, IntelData> m_store;
 };
+
+} // namespace AIGD
+

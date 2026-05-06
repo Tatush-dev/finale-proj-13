@@ -3,7 +3,7 @@
 
 MissionController::MissionController(
     std::shared_ptr<INavigationModel>     navModel,
-    std::shared_ptr<IIntelligenceManager> intelMgr,
+    std::shared_ptr<AIGD::IIntelligenceManager> intelMgr,
     std::shared_ptr<IMissionView>         view)
     : m_navModel(navModel)
     , m_intelMgr(intelMgr)

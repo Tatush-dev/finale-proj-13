@@ -1,6 +1,9 @@
 #pragma once
-#include <list>
-#include "../Common/Types.h"
+#include <vector>
+#include <optional>
+#include "IntelData.h"
+
+namespace AIGD {
 
 /**
  * Abstract interface for the intelligence store.
@@ -10,12 +13,15 @@ class IIntelligenceManager {
 public:
     virtual ~IIntelligenceManager() = default;
 
-    // O(1) insertion via HashTable key on IntelData::id.
-    virtual void StoreIntel(const IntelData& data) = 0;
+    // O(1) insertion via HashTable key on IntelData::timestamp.
+    virtual void addIntel(const IntelData& data) = 0;
 
-    // Returns intelligence collected at a specific location (nearest match).
-    virtual IntelData RetrieveIntel(const Coordinates& location) = 0;
+    // Returns intelligence collected at a specific timestamp.
+    virtual std::optional<IntelData> getIntel(long long timestamp) const = 0;
 
     // Returns the full accumulated intel list for report generation.
-    virtual std::list<IntelData> GetAllIntel() const = 0;
+    virtual std::vector<IntelData> getAllIntel() const = 0;
 };
+
+} // namespace AIGD
+
