@@ -1,6 +1,9 @@
 #include <iostream>
 #include <memory>
 #include <ctime>
+#include <cstdlib>
+#include <cmath>
+#include <iomanip>
 
 #include "Common/AppEnums.h"
 #include "Utils/SpatialUtilities.h"
@@ -10,6 +13,7 @@
 #include "Model/NavigationModel.h"
 #include "View/MissionView.h"
 #include "Controller/MissionController.h"
+#include "Utils/KalmanFilter.h"
 
 using namespace AIGD;
 
@@ -179,6 +183,65 @@ int main() {
     // std::cout << "  STEALTH cost is " << (costDifference > 0 ? "higher" : "lower") << " by " << std::abs(costDifference) << "\n\n";
 
     // std::cout << "CostCalculator test: SUCCESS\n\n";
+
+    // ── Test KalmanFilter (Task 3.1 - Sensor Fusion) ─────────────────────────
+    std::cout << "Testing KalmanFilter (Task 3.1 - 1D Sensor Fusion)...\n\n";
+
+    // Seed RNG once for reproducible demo runs
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
+
+    // Box-Muller transform: produces a zero-mean Gaussian sample with given std-dev
+    auto gaussianNoise = [](double stddev) -> double {
+        const double u1 = (static_cast<double>(std::rand()) + 1.0) /
+                          (static_cast<double>(RAND_MAX) + 2.0);
+        const double u2 = (static_cast<double>(std::rand()) + 1.0) /
+                          (static_cast<double>(RAND_MAX) + 2.0);
+        return stddev * std::sqrt(-2.0 * std::log(u1)) *
+               std::cos(2.0 * 3.14159265358979323846 * u2);
+    };
+
+    // Simulation parameters
+    const int    STEPS            = 20;
+    const double TRUE_VELOCITY    = 2.0;   // m/s
+    const double DT               = 0.1;   // seconds per step
+    const double DISPLACEMENT     = TRUE_VELOCITY * DT;  // 0.2 m per step
+    const double MEAS_NOISE_STD   = 1.0;   // sensor std-dev (m)
+
+    // Filter initialised at true start position, high initial uncertainty
+    AIGD::KalmanFilter kalman(
+        /*initialState=*/0.0,
+        /*initialP    =*/1.0,
+        /*Q process   =*/0.01,
+        /*R measurement=*/MEAS_NOISE_STD * MEAS_NOISE_STD  // R = σ²
+    );
+
+    std::cout << std::fixed << std::setprecision(4);
+    std::cout << std::left
+              << std::setw(6)  << "Step"
+              << std::setw(14) << "True Pos (m)"
+              << std::setw(18) << "Noisy Meas (m)"
+              << std::setw(18) << "Filtered Est (m)"
+              << "Covariance P\n";
+    std::cout << std::string(70, '-') << "\n";
+
+    double truePosition = 0.0;
+
+    for (int step = 1; step <= STEPS; ++step) {
+        truePosition += DISPLACEMENT;
+
+        const double noisyMeasurement = truePosition + gaussianNoise(MEAS_NOISE_STD);
+
+        kalman.Predict({DISPLACEMENT});
+        kalman.Update({noisyMeasurement});
+
+        std::cout << std::setw(6)  << step
+                  << std::setw(14) << truePosition
+                  << std::setw(18) << noisyMeasurement
+                  << std::setw(18) << kalman.getState()
+                  << kalman.getCovariance() << "\n";
+    }
+
+    std::cout << "\nKalmanFilter test: SUCCESS\n\n";
 
     std::cout << "=== All data models validated successfully ===\n";
     return encodeDecodeSuccess ? 0 : 1;

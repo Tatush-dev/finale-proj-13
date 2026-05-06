@@ -11,6 +11,7 @@ add_executable(ImintDrone
     src/Model/IntelData.cpp
     src/Utils/SpatialUtilities.cpp
     src/Utils/Base64Codec.cpp
+    src/Utils/KalmanFilter.cpp
     src/View/MissionView.cpp
     src/Controller/MissionController.cpp
 )
