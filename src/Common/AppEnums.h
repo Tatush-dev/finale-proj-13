@@ -33,6 +33,16 @@ enum class SensorType {
     THERMAL     ///< Thermal imaging data
 };
 
+/**
+ * @enum MissionPriority
+ * @brief Defines mission priority profiles for cost calculation.
+ */
+enum class MissionPriority {
+    BALANCED,   ///< Equal weight distribution across distance, risk, and energy
+    STEALTH,    ///< High weight on risk factor to minimize detection
+    AGGRESSIVE  ///< High weight on distance and lower on risk for speed
+};
+
 } // namespace AIGD
 
 #endif // APP_ENUMS_H

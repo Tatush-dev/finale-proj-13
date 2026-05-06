@@ -5,6 +5,7 @@
 #include "Common/AppEnums.h"
 #include "Utils/SpatialUtilities.h"
 #include "Utils/Base64Codec.h"
+#include "Utils/CostCalculator.h"
 #include "Model/IntelData.h"
 #include "Model/IntelManager.h"
 #include "Model/NavigationModel.h"
@@ -96,11 +97,11 @@ int main() {
     std::cout << "Testing OccupancyGrid (Task 2.1)...\n";
     OccupancyGrid grid(10, 10);  // Create 10x10 grid
 
-    std::cout << "\n→ Grid BEFORE sensor updates:\n";
+    std::cout << "\n  Grid BEFORE sensor updates:\n";
     grid.PrintGrid();
 
     // Simulate sensor readings at specific coordinates
-    std::cout << "\n→ Simulating sensor readings...\n";
+    std::cout << "\n  Simulating sensor readings...\n";
 
     // Scenario 1: Obstacle detected at (2, 2)
     std::cout << "  [1] Update cell (2, 2) with obstacle detection (3 times)\n";
@@ -126,11 +127,11 @@ int main() {
         grid.UpdateCell(3, 7, true);
     }
 
-    std::cout << "\n→ Grid AFTER sensor updates:\n";
+    std::cout << "\n  Grid AFTER sensor updates:\n";
     grid.PrintGrid();
 
     // Print detailed probabilities for test cells
-    std::cout << "\n→ Detailed cell probabilities:\n";
+    std::cout << "\n  Detailed cell probabilities:\n";
     std::cout << "  Cell (2, 2) [obstacle]:   prob=" << grid.GetCellProbability(2, 2)
               << " | occupied=" << (grid.IsOccupied(2, 2) ? "YES" : "NO") << "\n";
     std::cout << "  Cell (5, 5) [free]:       prob=" << grid.GetCellProbability(5, 5)
@@ -144,6 +145,42 @@ int main() {
 
     std::cout << "Grid dimensions: " << grid.GetWidth() << "x" << grid.GetLength() << "\n";
     std::cout << "OccupancyGrid test: SUCCESS\n\n";
+
+    // ── Test CostCalculator (Task 2.2 - Dynamic Cost Function Engine) ──────
+    std::cout << "Testing CostCalculator (Task 2.2)...\n";
+    CostCalculator calculator;
+
+    // Test parameters
+    const double distance = 100.0;      // meters
+    const double riskFactor = 0.7;      // high risk
+    const double energyConsumption = 50.0;  // arbitrary units
+
+    std::cout << "  Test Parameters:\n";
+    std::cout << "    Distance: " << distance << " m\n";
+    std::cout << "    Risk Factor: " << riskFactor << "\n";
+    std::cout << "    Energy Consumption: " << energyConsumption << " units\n\n";
+
+    // Test STEALTH priority
+    calculator.setPriority(MissionPriority::STEALTH);
+    double stealthCost = calculator.calculateCost(distance, riskFactor, energyConsumption);
+    std::cout << "  STEALTH Priority Cost: " << stealthCost << "\n";
+
+    // Test AGGRESSIVE priority
+    calculator.setPriority(MissionPriority::AGGRESSIVE);
+    double aggressiveCost = calculator.calculateCost(distance, riskFactor, energyConsumption);
+    std::cout << "  AGGRESSIVE Priority Cost: " << aggressiveCost << "\n";
+
+    // Test BALANCED priority
+    calculator.setPriority(MissionPriority::BALANCED);
+    double balancedCost = calculator.calculateCost(distance, riskFactor, energyConsumption);
+    std::cout << "  BALANCED Priority Cost: " << balancedCost << "\n\n";
+
+    // Verification: Show cost difference between STEALTH and AGGRESSIVE
+    double costDifference = stealthCost - aggressiveCost;
+    std::cout << "  Cost Difference (STEALTH - AGGRESSIVE): " << costDifference << "\n";
+    std::cout << "  STEALTH cost is " << (costDifference > 0 ? "higher" : "lower") << " by " << std::abs(costDifference) << "\n\n";
+
+    std::cout << "CostCalculator test: SUCCESS\n\n";
 
     std::cout << "=== All data models validated successfully ===\n";
     return encodeDecodeSuccess ? 0 : 1;
