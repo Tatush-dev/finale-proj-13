@@ -11,9 +11,12 @@
 #include "Model/IntelData.h"
 #include "Model/IntelligenceManager.h"
 #include "Model/NavigationModel.h"
+#include "Model/OccupancyGrid.h"
 #include "View/MissionView.h"
 #include "Controller/MissionController.h"
 #include "Utils/KalmanFilter.h"
+#include "Utils/CostCalculator.h"
+#include "Utils/AStarPlanner.h"
 
 using namespace AIGD;
 
@@ -242,6 +245,51 @@ int main() {
     }
 
     std::cout << "\nKalmanFilter test: SUCCESS\n\n";
+
+    // ── Test AStarPlanner (Task 3.2 — A* Global Path Planning) ──────────────
+    std::cout << "Testing AStarPlanner (Task 3.2 - A* Global Path Planning)...\n\n";
+
+    // 10x10 grid; all cells start at 0.5 (unknown)
+    OccupancyGrid aStarGrid(10, 10);
+
+    // Build a vertical wall at column x=5 for rows y=0..6.
+    // Three UpdateCell(true) calls push each cell past the 0.7 threshold:
+    //   0.5 -> 0.605 -> 0.679 -> 0.730 (occupied)
+    // The gap at y=7, y=8, y=9 is left open so a path can thread through.
+    std::cout << "  Obstacle layout: vertical wall at x=5 for y=0..6\n";
+    std::cout << "  Gap            : x=5 at y=7, y=8, y=9 (bottom of grid)\n";
+    for (int wallY = 0; wallY <= 6; ++wallY) {
+        aStarGrid.UpdateCell(5, wallY, true);
+        aStarGrid.UpdateCell(5, wallY, true);
+        aStarGrid.UpdateCell(5, wallY, true);
+    }
+
+    std::cout << "\n  Grid (. free | o unknown | X obstacle):\n";
+    aStarGrid.PrintGrid();
+
+    const Coordinates aStart (1.0, 3.0, 50.0);
+    const Coordinates aTarget(8.0, 3.0, 50.0);
+
+    std::cout << "\n  Start : (" << aStart.x  << ", " << aStart.y  << ")\n";
+    std::cout << "  Target: (" << aTarget.x << ", " << aTarget.y << ")\n\n";
+
+    AIGD::CostCalculator aStarCost;          // Default: BALANCED priority
+    AIGD::AStarPlanner   planner;
+
+    const std::vector<Coordinates> aStarPath =
+        planner.findPath(aStart, aTarget, aStarGrid, aStarCost);
+
+    if (aStarPath.empty()) {
+        std::cout << "  A* result : NO PATH FOUND\n\n";
+    } else {
+        std::cout << "  A* found path (" << aStarPath.size() << " waypoints):\n";
+        for (int i = 0; i < static_cast<int>(aStarPath.size()); ++i) {
+            std::cout << "    [" << std::setw(2) << i << "]  ("
+                      << std::setw(4) << aStarPath[i].x << ", "
+                      << std::setw(4) << aStarPath[i].y << ")\n";
+        }
+        std::cout << "\n  AStarPlanner test: SUCCESS\n\n";
+    }
 
     std::cout << "=== All data models validated successfully ===\n";
     return encodeDecodeSuccess ? 0 : 1;
