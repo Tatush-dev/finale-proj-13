@@ -17,6 +17,7 @@
 #include "Utils/KalmanFilter.h"
 #include "Utils/CostCalculator.h"
 #include "Utils/AStarPlanner.h"
+#include "Utils/DStarLitePlanner.h"
 
 using namespace AIGD;
 
@@ -289,6 +290,72 @@ int main() {
                       << std::setw(4) << aStarPath[i].y << ")\n";
         }
         std::cout << "\n  AStarPlanner test: SUCCESS\n\n";
+    }
+
+    // ── Test DStarLitePlanner (Task 3.3 — D* Lite Dynamic Replanning) ────────
+    std::cout << "Testing DStarLitePlanner (Task 3.3 - D* Lite Dynamic Replanning)...\n\n";
+
+    // 10x10 grid, all cells unknown (probability 0.5 — not occupied)
+    OccupancyGrid dStarGrid(10, 10);
+
+    // Scenario: drone flies horizontally from (0,5) to (9,5).
+    // Initial path: straight line along row y=5.
+    // Mid-flight: obstacle discovered at (5,5), directly on the planned route.
+    // Expected replan: detour above or below (5,5) to reach (9,5).
+    const Coordinates dStart (0.0, 5.0, 50.0);
+    const Coordinates dTarget(9.0, 5.0, 50.0);
+
+    std::cout << "  Grid       : 10x10, no initial obstacles\n";
+    std::cout << "  Start      : (" << dStart.x  << ", " << dStart.y  << ")\n";
+    std::cout << "  Goal       : (" << dTarget.x << ", " << dTarget.y << ")\n\n";
+
+    AIGD::CostCalculator   dStarCost;
+    AIGD::DStarLitePlanner dStarPlanner(dStart, dTarget, dStarGrid, dStarCost);
+
+    std::vector<Coordinates> initialDStarPath = dStarPlanner.getInitialPath();
+
+    std::cout << "  Initial path (" << initialDStarPath.size() << " waypoints):\n";
+    for (int i = 0; i < static_cast<int>(initialDStarPath.size()); ++i) {
+        std::cout << "    [" << std::setw(2) << i << "]  ("
+                  << std::setw(4) << initialDStarPath[i].x << ", "
+                  << std::setw(4) << initialDStarPath[i].y << ")\n";
+    }
+
+    // Simulate: drone advances 4 steps along the initial path
+    // (from waypoint [0] to waypoint [4], i.e. reaching (4,5))
+    const int     droneStep   = 4;
+    Coordinates   currentPos  = initialDStarPath[droneStep];
+    Coordinates   obstacle    = Coordinates(5.0, 5.0, 50.0);  // directly ahead
+
+    std::cout << "\n  >>> Drone has advanced to step " << droneStep
+              << " — current position: ("
+              << currentPos.x << ", " << currentPos.y << ")\n";
+    std::cout << "  >>> NEW OBSTACLE detected at ("
+              << obstacle.x << ", " << obstacle.y << ") — replanning...\n\n";
+
+    std::vector<Coordinates> replanPath =
+        dStarPlanner.updatePath(currentPos, obstacle, dStarGrid, dStarCost);
+
+    if (replanPath.empty()) {
+        std::cout << "  D* Lite result : NO PATH FOUND\n\n";
+    } else {
+        std::cout << "  Replanned path (" << replanPath.size() << " waypoints):\n";
+        for (int i = 0; i < static_cast<int>(replanPath.size()); ++i) {
+            std::cout << "    [" << std::setw(2) << i << "]  ("
+                      << std::setw(4) << replanPath[i].x << ", "
+                      << std::setw(4) << replanPath[i].y << ")\n";
+        }
+
+        // Verify that the obstacle cell (5,5) is not in the replanned path
+        bool obstacleAvoided = true;
+        for (int i = 0; i < static_cast<int>(replanPath.size()); ++i) {
+            if (static_cast<int>(replanPath[i].x) == 5 &&
+                static_cast<int>(replanPath[i].y) == 5) {
+                obstacleAvoided = false;
+            }
+        }
+        std::cout << "\n  Obstacle (5,5) avoided: " << (obstacleAvoided ? "YES" : "NO") << "\n";
+        std::cout << "  DStarLitePlanner test: " << (obstacleAvoided ? "SUCCESS" : "FAILURE") << "\n\n";
     }
 
     std::cout << "=== All data models validated successfully ===\n";

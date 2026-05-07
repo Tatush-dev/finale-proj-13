@@ -8,10 +8,15 @@ add_executable(ImintDrone
     src/main.cpp
     src/Model/NavigationModel.cpp
     src/Model/IntelligenceManager.cpp
+    src/Model/IntelManager.cpp
     src/Model/IntelData.cpp
+    src/Model/OccupancyGrid.cpp
     src/Utils/SpatialUtilities.cpp
     src/Utils/Base64Codec.cpp
     src/Utils/KalmanFilter.cpp
+    src/Utils/CostCalculator.cpp
+    src/Utils/AStarPlanner.cpp
+    src/Utils/DStarLitePlanner.cpp
     src/View/MissionView.cpp
     src/Controller/MissionController.cpp
 )
