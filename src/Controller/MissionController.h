@@ -211,8 +211,6 @@ private:
     /** Returns a human-readable string for the given FSM state. */
     static std::string stateToString(MissionState state);
 
-    /** Prints one telemetry line to stdout. */
-    void logTelemetry(int step) const;
 };
 
 } // namespace AIGD

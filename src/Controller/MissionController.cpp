@@ -193,7 +193,8 @@ void MissionController::ExecuteSenseThinkActLoop() {
                 m_kalmanY.Predict({m_drone.position.y - filteredPos.y});
 
                 m_view.UpdateDronePosition(m_drone.position);
-                logTelemetry(iteration);
+                m_view.displayGrid(m_grid, m_drone.position, m_targetPoint, m_currentPath);
+                m_view.displayTelemetry(m_drone.batteryLevel, m_state, m_drone.position);
 
                 if (coordsMatch(m_drone.position, m_targetPoint)) {
                     m_state = MissionState::RECON;
@@ -231,7 +232,8 @@ void MissionController::ExecuteSenseThinkActLoop() {
                 ++m_pathIndex;
 
                 m_view.UpdateDronePosition(m_drone.position);
-                logTelemetry(iteration);
+                m_view.displayGrid(m_grid, m_drone.position, m_startPoint, m_currentPath);
+                m_view.displayTelemetry(m_drone.batteryLevel, m_state, m_drone.position);
 
                 if (coordsMatch(m_drone.position, m_startPoint)) {
                     m_state          = MissionState::LANDED;
@@ -340,14 +342,5 @@ std::string MissionController::stateToString(MissionState state) {
     return "UNKNOWN";
 }
 
-void MissionController::logTelemetry(int step) const {
-    std::cout << std::fixed << std::setprecision(1)
-              << "[TELEM] step=" << std::setw(4) << step
-              << "  state=" << std::left << std::setw(8)
-              << stateToString(m_state) << std::right
-              << "  pos=(" << std::setw(5) << m_drone.position.x
-              << ", "      << std::setw(5) << m_drone.position.y << ")"
-              << "  bat="  << std::setw(5) << m_drone.batteryLevel << "%\n";
-}
 
 } // namespace AIGD

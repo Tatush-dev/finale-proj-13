@@ -2,6 +2,9 @@
 #include <list>
 #include <string>
 #include "../Common/Types.h"
+#include "../Model/IntelData.h"
+
+namespace AIGD {
 
 /**
  * Abstract interface for the mission view layer.
@@ -20,3 +23,5 @@ public:
     // Renders the final IMINT report from accumulated intel.
     virtual void GenerateFinalReport(const std::list<IntelData>& finalIntel) = 0;
 };
+
+} // namespace AIGD
