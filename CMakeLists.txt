@@ -17,6 +17,7 @@ add_executable(ImintDrone
     src/Utils/CostCalculator.cpp
     src/Utils/AStarPlanner.cpp
     src/Utils/DStarLitePlanner.cpp
+    src/Utils/ReportGenerator.cpp
     src/View/MissionView.cpp
     src/Controller/MissionController.cpp
 )

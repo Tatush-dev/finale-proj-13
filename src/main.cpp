@@ -18,6 +18,8 @@
 #include "Utils/CostCalculator.h"
 #include "Utils/AStarPlanner.h"
 #include "Utils/DStarLitePlanner.h"
+#include "Utils/ReportGenerator.h"
+#include "Model/IntelManager.h"
 
 using namespace AIGD;
 
@@ -399,6 +401,20 @@ int main() {
     std::cout << "  ────────────────────────────────────────────────\n\n";
     std::cout << "MissionController test: " << (missionSuccess ? "SUCCESS" : "FAILURE") << "\n\n";
 
+    // ── Task 5.2 — Generate Intelligence Report ───────────────────────────────
+    std::cout << "Testing ReportGenerator (Task 5.2 - Automated Intelligence Reporting)...\n\n";
+
+    // Transfer captured intel into an IntelManager for the report generator
+    IntelManager reportManager;
+    for (const auto& item : missionIntelMgr.getAllIntel()) {
+        reportManager.addIntel(item);
+    }
+
+    const bool reportOk = ReportGenerator::generateReport(
+        "mission_report.json", reportManager, missionSuccess);
+
+    std::cout << "ReportGenerator test: " << (reportOk ? "SUCCESS" : "FAILURE") << "\n\n";
+
     std::cout << "=== All data models validated successfully ===\n";
-    return (encodeDecodeSuccess && missionSuccess) ? 0 : 1;
+    return (encodeDecodeSuccess && missionSuccess && reportOk) ? 0 : 1;
 }
