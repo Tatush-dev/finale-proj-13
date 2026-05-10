@@ -358,6 +358,47 @@ int main() {
         std::cout << "  DStarLitePlanner test: " << (obstacleAvoided ? "SUCCESS" : "FAILURE") << "\n\n";
     }
 
+    // ── Test MissionController (Task 4 — Mission Orchestration) ─────────────────
+    std::cout << "Testing MissionController (Task 4 - Mission Orchestration)...\n\n";
+
+    // 10×10 grid — all cells start unknown (probability 0.5)
+    OccupancyGrid missionGrid(10, 10);
+
+    const Coordinates mStart (0.0, 5.0, 50.0);
+    const Coordinates mTarget(9.0, 5.0, 50.0);
+
+    // Drone at start with full battery
+    DroneState drone(mStart, 100.0);
+
+    // Sensor module: obstacle fires at loop step 5, placed 2 cells ahead of the
+    // drone's position — exercises EVADE and D* Lite replanning.
+    SensorModule sensors(/*seed=*/42, /*obstacleStep=*/5, /*obstacleOffX=*/2.0);
+
+    IntelligenceManager missionIntelMgr;
+    MissionView         missionView;
+
+    MissionController controller(
+        missionGrid, drone, sensors, missionIntelMgr, missionView);
+
+    controller.InitializeMission(mStart, mTarget, {} /* no pre-known obstacles */);
+
+    std::cout << "  Route : (" << mStart.x  << ", " << mStart.y  << ")"
+              << " → (" << mTarget.x << ", " << mTarget.y << ")\n\n";
+
+    const bool missionSuccess = controller.RunMainLoop();
+
+    std::cout << "\n  ── Mission summary ─────────────────────────────\n";
+    std::cout << "  Result  : " << (missionSuccess ? "SUCCESS" : "FAILURE") << "\n";
+    std::cout << "  Battery : " << drone.batteryLevel << "%\n";
+    const auto allIntel = missionIntelMgr.getAllIntel();
+    std::cout << "  IMINT   : " << allIntel.size() << " item(s) stored\n";
+    if (!allIntel.empty()) {
+        std::cout << "  Payload : " << allIntel[0].getRawData().size()
+                  << " bytes (Base64-encoded)\n";
+    }
+    std::cout << "  ────────────────────────────────────────────────\n\n";
+    std::cout << "MissionController test: " << (missionSuccess ? "SUCCESS" : "FAILURE") << "\n\n";
+
     std::cout << "=== All data models validated successfully ===\n";
-    return encodeDecodeSuccess ? 0 : 1;
+    return (encodeDecodeSuccess && missionSuccess) ? 0 : 1;
 }

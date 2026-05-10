@@ -28,16 +28,6 @@ struct ThreatData {
     double      riskFactor;  // Feeds into Cost = Distance + Risk_Factor + Energy
 };
 
-// ─── Mission State FSM ───────────────────────────────────────────────────────
-enum class MissionState {
-    IDLE,
-    OUTBOUND,
-    RECON,
-    EVADE,
-    RETURN,
-    LANDED
-};
-
 // ─── Path / Waypoint ─────────────────────────────────────────────────────────
 using Waypoint  = Coordinates;
 using Path      = std::vector<Waypoint>;
