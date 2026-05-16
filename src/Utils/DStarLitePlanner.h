@@ -11,7 +11,7 @@
 namespace AIGD {
 
 /**
- * D* Lite incremental dynamic replanner (Koenig & Likhachev 2002).
+ * D* Lite incremental dynamic replanner
  *
  * Maintains a backward-search state (goal -> start) so that when a new
  * obstacle is discovered only the affected vertices are reprocessed, not
@@ -25,9 +25,6 @@ namespace AIGD {
  *    k1 = min(g,rhs) + h(s, sStart) + km
  *    k2 = min(g,rhs)
  *
- * COMPLIANCE: no break or continue statements appear anywhere in this file.
- * Loop termination is controlled exclusively via boolean flags and structured
- * while-conditions.
  */
 class DStarLitePlanner {
 public:

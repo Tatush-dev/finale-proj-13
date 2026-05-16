@@ -74,7 +74,7 @@ std::vector<Coordinates> AStarPlanner::findPath(
     openSet.push(startNode);
     bestGInOpen[encodePos(startX, startY)] = 0.0;
 
-    // ── Main A* loop (no break or continue used) ─────────────────────────────
+    // Main A* loop 
     bool targetFound = false;
     std::shared_ptr<AStarNode> foundNode = nullptr;
 
@@ -135,7 +135,7 @@ std::vector<Coordinates> AStarPlanner::findPath(
         }
     }
 
-    // ── Reconstruct path by tracing parent pointers from goal to start ────────
+    //  Reconstruct path by tracing parent pointers from goal to start 
     std::vector<Coordinates> path;
     if (targetFound) {
         auto node = foundNode;

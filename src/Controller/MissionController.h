@@ -79,6 +79,17 @@ private:
     static constexpr double NOISE_STD = 0.3;   ///< σ for position noise (metres)
 };
 
+// ── External Configuration Bundle ────────────────────────────────────────────
+/**
+ * Kalman Filter tuning parameters loaded from config.json.
+ * Defaults match the previously hard-coded values (Q=0.01, R=0.09).
+ */
+struct MissionConfig {
+    double          kalmanQ  = 0.01;                    ///< Process noise variance
+    double          kalmanR  = 0.09;                    ///< Measurement noise variance (σ²)
+    MissionPriority priority = MissionPriority::BALANCED; ///< Path-planning cost profile
+};
+
 // ── Mission Controller (FSM + Sense-Think-Act) ────────────────────────────────
 /**
  * Orchestrates the full mission lifecycle:
@@ -107,7 +118,8 @@ public:
                       DroneState&           drone,
                       SensorModule&         sensors,
                       IIntelligenceManager& intelMgr,
-                      MissionView&          view);
+                      MissionView&          view,
+                      const MissionConfig&  config = MissionConfig{});
 
     /**
      * Populates the grid with any pre-known obstacles, computes the initial
@@ -170,6 +182,9 @@ private:
     CostCalculator                    m_costCalc;
     AStarPlanner                      m_astar;
     std::unique_ptr<DStarLitePlanner> m_dstar;  ///< Constructed in InitializeMission
+
+    // ── External configuration ────────────────────────────────────────────────
+    MissionConfig m_config;
 
     // ── Sensor fusion (1D Kalman per axis) ────────────────────────────────────
     KalmanFilter  m_kalmanX;

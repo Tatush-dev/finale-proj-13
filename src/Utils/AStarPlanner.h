@@ -16,7 +16,6 @@ namespace AIGD {
  *
  * Heuristic : Manhattan distance (admissible for 4-directional movement).
  * Closed set: std::unordered_set for O(1) membership checks.
- * No break or continue statements are used anywhere in the implementation.
  */
 class AStarPlanner {
 public:

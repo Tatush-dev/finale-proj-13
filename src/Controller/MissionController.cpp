@@ -52,7 +52,8 @@ MissionController::MissionController(OccupancyGrid&        grid,
                                      DroneState&           drone,
                                      SensorModule&         sensors,
                                      IIntelligenceManager& intelMgr,
-                                     MissionView&          view)
+                                     MissionView&          view,
+                                     const MissionConfig&  config)
     : m_grid(grid)
     , m_drone(drone)
     , m_sensors(sensors)
@@ -64,12 +65,14 @@ MissionController::MissionController(OccupancyGrid&        grid,
     , m_costCalc()
     , m_astar()
     , m_dstar(nullptr)
-    // Q = 0.01, R = σ² = 0.09 (σ = NOISE_STD = 0.3 m)
-    , m_kalmanX(0.0, 1.0, 0.01, 0.09)
-    , m_kalmanY(0.0, 1.0, 0.01, 0.09)
+    , m_config(config)
+    , m_kalmanX(0.0, 1.0, config.kalmanQ, config.kalmanR)
+    , m_kalmanY(0.0, 1.0, config.kalmanQ, config.kalmanR)
     , m_state(MissionState::IDLE)
     , m_missionSuccess(false)
-{}
+{
+    m_costCalc.setPriority(m_config.priority);
+}
 
 // ── InitializeMission ─────────────────────────────────────────────────────────
 
@@ -81,9 +84,9 @@ void MissionController::InitializeMission(
     m_startPoint  = start;
     m_targetPoint = target;
 
-    // Re-seed Kalman filters at the true start position
-    m_kalmanX = KalmanFilter(start.x, 1.0, 0.01, 0.09);
-    m_kalmanY = KalmanFilter(start.y, 1.0, 0.01, 0.09);
+    // Re-seed Kalman filters at the true start position using configured Q/R
+    m_kalmanX = KalmanFilter(start.x, 1.0, m_config.kalmanQ, m_config.kalmanR);
+    m_kalmanY = KalmanFilter(start.y, 1.0, m_config.kalmanQ, m_config.kalmanR);
 
     // Mark pre-known obstacle cells (3 Bayesian updates exceed the 0.7 threshold)
     for (const Coordinates& obs : knownObstacles) {
