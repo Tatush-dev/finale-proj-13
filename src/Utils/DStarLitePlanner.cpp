@@ -5,15 +5,26 @@
 namespace AIGD {
 
 // ── Value accessors ──────────────────────────────────────────────────────────
+// Return INF when the encoded cell is absent from the cost map, meaning its
+// g or rhs value has never been set (implicitly infinite — unvisited cell).
+// Single-return form: result initialised to INF, overwritten on map hit.
 
 double DStarLitePlanner::getG(int enc) const {
     auto it = g_.find(enc);
-    return (it != g_.end()) ? it->second : INF;
+    double result = INF;
+    if (it != g_.end()) {
+        result = it->second;
+    }
+    return result;
 }
 
 double DStarLitePlanner::getRhs(int enc) const {
     auto it = rhs_.find(enc);
-    return (it != rhs_.end()) ? it->second : INF;
+    double result = INF;
+    if (it != rhs_.end()) {
+        result = it->second;
+    }
+    return result;
 }
 
 // ── Heuristic ────────────────────────────────────────────────────────────────
@@ -146,12 +157,18 @@ void DStarLitePlanner::updateVertex(int x, int y,
 // Core D* Lite loop. Processes the open list until the start vertex is locally
 // consistent and no open vertex has a key smaller than the start's key.
 //
+// Each iteration either:
+//   a) Re-inserts a vertex whose key has increased since it was enqueued
+//      (key was stale — the vertex is placed back with the correct key), or
+//   b) Processes a truly inconsistent vertex:
+//      - Overconsistent  (g > rhs): lower g to rhs, propagate to neighbours.
+//      - Underconsistent (g < rhs): set g to INF, update vertex + neighbours.
 void DStarLitePlanner::computeShortestPath(const OccupancyGrid& grid,
                                            CostCalculator& costCalc) {
     cleanStaleTop();
 
-    int    startEnc = encode(startX_, startY_);
-    bool   shouldContinue = true;
+    int  startEnc      = encode(startX_, startY_);
+    bool shouldContinue = true;
 
     while (shouldContinue) {
         bool heapEmpty = openList_.empty();
@@ -225,66 +242,69 @@ void DStarLitePlanner::computeShortestPath(const OccupancyGrid& grid,
 // effectiveG = max(g, rhs).  Using max guards against underconsistent vertices
 // whose stale g < rhs (= true cost), which could otherwise appear cheaper than
 // they really are and cause path-extraction cycles.
+//
+// Single-return form: the early-exit (unreachable start) is handled by wrapping
+// the path-building loop in an else block rather than an early return statement.
 std::vector<Coordinates> DStarLitePlanner::extractPath(int fromX, int fromY,
                                                         const OccupancyGrid&  grid,
                                                         const CostCalculator& costCalc) const {
     std::vector<Coordinates> path;
 
-    // If start is already unreachable, bail out immediately
     int startEnc2 = encode(fromX, fromY);
-    if (std::max(getG(startEnc2), getRhs(startEnc2)) >= INF &&
-        !(fromX == goalX_ && fromY == goalY_)) {
-        return path;
-    }
+    bool unreachable = (std::max(getG(startEnc2), getRhs(startEnc2)) >= INF &&
+                        !(fromX == goalX_ && fromY == goalY_));
 
-    int cx = fromX;
-    int cy = fromY;
-    int maxSteps = width_ * length_; // Safety bound against cycles
-    int steps    = 0;
+    // Only attempt path extraction if the start cell is reachable.
+    if (!unreachable) {
+        int cx = fromX;
+        int cy = fromY;
+        int maxSteps = width_ * length_; // Safety bound against cycles
+        int steps    = 0;
 
-    bool reachedGoal = (cx == goalX_ && cy == goalY_);
+        bool reachedGoal = (cx == goalX_ && cy == goalY_);
 
-    while (!reachedGoal && steps < maxSteps) {
-        path.push_back(Coordinates(static_cast<double>(cx),
-                                   static_cast<double>(cy),
-                                   altitude_));
+        while (!reachedGoal && steps < maxSteps) {
+            path.push_back(Coordinates(static_cast<double>(cx),
+                                       static_cast<double>(cy),
+                                       altitude_));
 
-        // Advance to the neighbor that minimises edgeCost(cx,cy,n) + g(n)
-        std::vector<std::pair<int,int>> nbrs = getNeighbors(cx, cy);
-        int    bestX = -1, bestY = -1;
-        double bestVal = INF;
+            // Advance to the neighbor that minimises edgeCost(cx,cy,n) + effectiveG(n)
+            std::vector<std::pair<int,int>> nbrs = getNeighbors(cx, cy);
+            int    bestX  = -1, bestY = -1;
+            double bestVal = INF;
 
-        for (int i = 0; i < static_cast<int>(nbrs.size()); ++i) {
-            int nx = nbrs[i].first;
-            int ny = nbrs[i].second;
-            double c           = edgeCost(cx, cy, nx, ny, grid, costCalc);
-            int    nEnc        = encode(nx, ny);
-            double effectiveG  = std::max(getG(nEnc), getRhs(nEnc));
-            double val         = (c < INF) ? (c + effectiveG) : INF;
-            if (val < bestVal) {
-                bestVal = val;
-                bestX   = nx;
-                bestY   = ny;
+            for (int i = 0; i < static_cast<int>(nbrs.size()); ++i) {
+                int nx = nbrs[i].first;
+                int ny = nbrs[i].second;
+                double c          = edgeCost(cx, cy, nx, ny, grid, costCalc);
+                int    nEnc       = encode(nx, ny);
+                double effectiveG = std::max(getG(nEnc), getRhs(nEnc));
+                double val        = (c < INF) ? (c + effectiveG) : INF;
+                if (val < bestVal) {
+                    bestVal = val;
+                    bestX   = nx;
+                    bestY   = ny;
+                }
+            }
+
+            if (bestX == -1 || bestVal >= INF) {
+                // No reachable successor: goal is blocked — clear path to signal failure.
+                path.clear();
+                reachedGoal = true;  // exit loop; empty path signals failure
+            } else {
+                cx = bestX;
+                cy = bestY;
+                reachedGoal = (cx == goalX_ && cy == goalY_);
+                ++steps;
             }
         }
 
-        if (bestX == -1 || bestVal >= INF) {
-            // No reachable successor: goal is blocked
-            path.clear();
-            reachedGoal = true;  // exit loop; empty path signals failure
-        } else {
-            cx = bestX;
-            cy = bestY;
-            reachedGoal = (cx == goalX_ && cy == goalY_);
-            ++steps;
+        // Append goal node if we reached it successfully
+        if (cx == goalX_ && cy == goalY_) {
+            path.push_back(Coordinates(static_cast<double>(goalX_),
+                                       static_cast<double>(goalY_),
+                                       altitude_));
         }
-    }
-
-    // Append goal node if we reached it successfully
-    if (cx == goalX_ && cy == goalY_) {
-        path.push_back(Coordinates(static_cast<double>(goalX_),
-                                   static_cast<double>(goalY_),
-                                   altitude_));
     }
 
     return path;

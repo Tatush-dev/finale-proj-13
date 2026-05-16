@@ -16,96 +16,100 @@ OccupancyGrid::OccupancyGrid(int width, int length)
 }
 
 /**
- * Updates a cell using Bayesian update logic (Log-Odds approach).
- * 
- * Bayesian Rule: P(occ|z) = P(z|occ) * P(occ) / P(z)
- * 
- * Simplified approach:
- * - If obstacle detected: increase probability toward PROB_OCCUPIED_IF_DETECTED
- * - If free space detected: decrease probability toward PROB_FREE_IF_NOT_DETECTED
- * - Use a soft update (doesn't jump to extremes, gradually converges)
+ * Updates a cell using soft Bayesian update logic.
+ *
+ * Formula: new_p = old_p * (1 - GRID_UPDATE_FACTOR) + target_p * GRID_UPDATE_FACTOR
+ *
+ * Bayesian reasoning:
+ *  - If an obstacle is detected, probability nudges toward PROB_OCCUPIED_IF_DETECTED.
+ *  - If free space is detected, it nudges toward PROB_FREE_IF_NOT_DETECTED.
+ *  - α = GRID_UPDATE_FACTOR = 0.30 prevents a single noisy reading from flipping
+ *    a cell past OCCUPANCY_THRESHOLD; three consistent hits are needed (~0.5→0.73).
+ *
+ * Out-of-bounds coordinates are silently ignored (guarded by the outer if-block
+ * to maintain the Single-Entry Single-Exit principle — no early returns).
  */
 void OccupancyGrid::UpdateCell(int x, int y, bool sensorObservedObstacle) {
-    // Boundary check
-    if (x < 0 || x >= width || y < 0 || y >= length) {
-        return;  // Silently ignore out-of-bounds updates
-    }
+    // Only update if coordinates fall within the valid grid extent.
+    if (x >= 0 && x < width && y >= 0 && y < length) {
+        double& cellProb = grid[y][x];
 
-    double& cellProb = grid[y][x];
-    
-    // Bayesian update: blend current probability with sensor observation
-    double targetProb = sensorObservedObstacle 
-                        ? PROB_OCCUPIED_IF_DETECTED 
-                        : PROB_FREE_IF_NOT_DETECTED;
-    
-    // Soft update: move probability toward target with damping factor (0.3 = 30% update per call)
-    const double UPDATE_FACTOR = 0.3;
-    cellProb = cellProb * (1.0 - UPDATE_FACTOR) + targetProb * UPDATE_FACTOR;
-    
-    // Clamp to valid range [0, 1]
-    if (cellProb < 0.0) cellProb = 0.0;
-    if (cellProb > 1.0) cellProb = 1.0;
+        // Select the Bayesian target probability based on sensor observation type.
+        double targetProb = sensorObservedObstacle
+                            ? PROB_OCCUPIED_IF_DETECTED
+                            : PROB_FREE_IF_NOT_DETECTED;
+
+        // Soft Bayesian blend: moves probability toward evidence without jumping.
+        cellProb = cellProb * (1.0 - GRID_UPDATE_FACTOR) + targetProb * GRID_UPDATE_FACTOR;
+
+        // Clamp probability to the valid range [0, 1].
+        if (cellProb < 0.0) { cellProb = 0.0; }
+        if (cellProb > 1.0) { cellProb = 1.0; }
+    }
 }
 
 /**
- * Checks if a cell is considered occupied based on occupancy threshold.
+ * Checks if a cell is considered occupied based on the occupancy threshold.
+ * The bounds check short-circuits via && so grid[] is only accessed for valid
+ * coordinates — combines both guards into a single return expression.
+ * Returns false for out-of-bounds (planners treat unknown boundary as passable).
  */
 bool OccupancyGrid::IsOccupied(int x, int y) const {
-    if (x < 0 || x >= width || y < 0 || y >= length) {
-        return false;  // Out-of-bounds is considered free
-    }
-    return grid[y][x] > OCCUPANCY_THRESHOLD;
+    return (x >= 0 && x < width && y >= 0 && y < length) && (grid[y][x] > OCCUPANCY_THRESHOLD);
 }
 
 /**
- * Gets the probability value of a cell.
+ * Returns the probability value of a cell.
+ * Out-of-bounds coordinates return -1.0 as a sentinel so callers can
+ * distinguish "invalid query" from valid probabilities near 0.
+ * Ternary keeps the logic as a single expression without a branch return.
  */
 double OccupancyGrid::GetCellProbability(int x, int y) const {
-    if (x < 0 || x >= width || y < 0 || y >= length) {
-        return -1.0;  // Invalid cell
-    }
-    return grid[y][x];
+    return (x >= 0 && x < width && y >= 0 && y < length) ? grid[y][x] : -1.0;
 }
 
 /**
  * IOccupancyGrid interface adapter.
- * Converts coordinate-based updates to grid-based indices.
+ * Converts coordinate-based updates to grid-based indices by truncating the
+ * floating-point world coordinates to integer cell positions.
+ * Any sensor reading above 0.5 is treated as an obstacle detection;
+ * a boolean flag prevents duplicate processing within the same sensor frame.
  */
 void OccupancyGrid::UpdateGridProbability(const Coordinates&         cell,
                                           const std::vector<double>& sensorData) {
-    // Map world coordinates to grid indices (simple linear mapping)
-    // Assumes world coordinates are in a reasonable range [0, width/height]
     int gridX = static_cast<int>(cell.x);
     int gridY = static_cast<int>(cell.y);
-    
-    // Determine observation: if any sensor reading indicates obstacle (> 0.5), flag it
+
+    // Determine whether any reading in the frame exceeds the obstacle threshold.
+    // The foundObstacle flag prevents re-triggering on subsequent readings.
     bool observedObstacle = false;
-    bool foundObstacle = false;
+    bool foundObstacle    = false;
     for (double reading : sensorData) {
         if (!foundObstacle && reading > 0.5) {
             observedObstacle = true;
-            foundObstacle = true;
+            foundObstacle    = true;
         }
     }
-    
+
     UpdateCell(gridX, gridY, observedObstacle);
 }
 
 /**
- * Prints the grid to stdout for visualization.
- * Uses characters to represent probability ranges:
- * . = free (0.0-0.3)
- * o = unknown (0.3-0.7)
- * X = occupied (0.7-1.0)
+ * Prints the grid to stdout for visualization and debugging.
+ * Symbols:
+ *   '.' = free     (probability 0.0–0.3)
+ *   'o' = unknown  (probability 0.3–0.7)
+ *   'X' = occupied (probability 0.7–1.0)
+ * Rows are rendered top-to-bottom (y=0 at top of output).
  */
 void OccupancyGrid::PrintGrid() const {
     std::cout << "\n+- Occupancy Grid (" << width << "x" << length << ") -+\n";
-    
+
     for (int y = 0; y < length; ++y) {
         std::cout << "| ";
         for (int x = 0; x < width; ++x) {
-            double prob = grid[y][x];
-            char symbol;
+            double prob   = grid[y][x];
+            char   symbol;
             if (prob < 0.3) {
                 symbol = '.';  // Free
             } else if (prob < 0.7) {
@@ -117,18 +121,20 @@ void OccupancyGrid::PrintGrid() const {
         }
         std::cout << " |\n";
     }
-    
+
     std::cout << "+" << std::string(width + 2, '-') << "+\n";
     std::cout << "Legend: . = free (0.0-0.3)  |  o = unknown (0.3-0.7)  |  X = occupied (0.7-1.0)\n";
 }
 
 /**
- * Prints detailed probability values for specific cells (for debug).
+ * Resets all cells to 0.5 (unknown state).
+ * Called between simulation runs to clear accumulated sensor evidence
+ * without reconstructing the grid object.
  */
 void OccupancyGrid::ResetGrid() {
     for (int y = 0; y < length; ++y) {
         for (int x = 0; x < width; ++x) {
-            grid[y][x] = 0.5;  // Reset to unknown
+            grid[y][x] = 0.5;
         }
     }
 }

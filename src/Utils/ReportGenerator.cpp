@@ -13,13 +13,27 @@ namespace AIGD {
 
 // ── public ────────────────────────────────────────────────────────────────────
 
+// Compiles all IntelData records into a structured JSON report and writes it
+// to the given file path.
+//
+// Workflow:
+//   1. Retrieve all intel records from the IntelManager.
+//   2. Validate every Base64 payload in a single pass — collect per-record
+//      results and an aggregate allValid flag.
+//   3. Serialise metadata + intelligence array to prettified JSON.
+//   4. Attempt to open the output file.  If it fails, log an error and
+//      return false.  If it succeeds, write and close the file, log a
+//      confirmation summary, and return true.
+//
+// Single-return form: success is initialised to false and set to true only
+// after the file is written successfully (no early return on file-open failure).
 bool ReportGenerator::generateReport(const std::string& filepath,
                                       const IntelManager& intelManager,
                                       bool missionSuccess)
 {
-    const std::vector<IntelData> records = intelManager.getAllIntel();
+    std::vector<IntelData> records = intelManager.getAllIntel();
 
-    // Validate every Base64 payload; collect per-record results in one pass
+    // Validate every Base64 payload; collect per-record results in one pass.
     std::vector<bool> payloadValid(records.size(), true);
     bool allValid = true;
     for (int i = 0; i < static_cast<int>(records.size()); ++i) {
@@ -43,8 +57,8 @@ bool ReportGenerator::generateReport(const std::string& filepath,
     json << "    \"intelligence\": [\n";
 
     for (int i = 0; i < static_cast<int>(records.size()); ++i) {
-        const IntelData& rec    = records[i];
-        const bool       isLast = (i == static_cast<int>(records.size()) - 1);
+        IntelData& rec    = records[i];
+        bool       isLast = (i == static_cast<int>(records.size()) - 1);
 
         json << "      {\n";
         json << "        \"index\": " << i << ",\n";
@@ -68,75 +82,90 @@ bool ReportGenerator::generateReport(const std::string& filepath,
     json << "}\n";
 
     // ── Write to file ─────────────────────────────────────────────────────────
+    // Single-return form: success flag updated inside the else branch.
     std::ofstream outFile(filepath);
+    bool success = false;
+
     if (!outFile.is_open()) {
         std::cerr << "[ReportGenerator] ERROR: cannot open '"
                   << filepath << "' for writing.\n";
-        return false;
+    } else {
+        outFile << json.str();
+        outFile.close();
+
+        // ── Console confirmation ──────────────────────────────────────────────
+        std::cout << "[ReportGenerator] Report exported  : " << filepath << "\n";
+        std::cout << "[ReportGenerator] Records written  : " << records.size() << "\n";
+        std::cout << "[ReportGenerator] Integrity check  : "
+                  << (allValid ? "PASS" : "FAIL (see payload_valid per record)") << "\n";
+
+        success = true;
     }
 
-    outFile << json.str();
-    outFile.close();
-
-    // ── Console confirmation ──────────────────────────────────────────────────
-    std::cout << "[ReportGenerator] Report exported  : " << filepath << "\n";
-    std::cout << "[ReportGenerator] Records written  : " << records.size() << "\n";
-    std::cout << "[ReportGenerator] Integrity check  : "
-              << (allValid ? "PASS" : "FAIL (see payload_valid per record)") << "\n";
-
-    return true;
+    return success;
 }
 
 // ── private helpers ───────────────────────────────────────────────────────────
 
+// Validates a Base64-encoded string against four rules:
+//   Rule 1: non-empty and length is a multiple of 4.
+//   Rule 2: at most two '=' padding characters permitted.
+//   Rule 3: '=' padding may only appear in the final two positions.
+//   Rule 4: dry-run decode via Base64Codec succeeds without throwing.
+//
+// Single-return form: result defaults to false.  The entire validation logic
+// is wrapped in an outer if-guard (rule 1); result is set to the computed
+// valid flag at the end of that block.
 bool ReportGenerator::validateBase64(const std::string& payload)
 {
-    // Rule 1: non-empty and length must be a multiple of 4
-    if (payload.empty() || payload.size() % 4 != 0) {
-        return false;
-    }
+    bool result = false;
 
-    bool valid    = true;
-    int  padsSeen = 0;
+    // Rule 1 gate: reject empty strings and non-multiples-of-4 immediately.
+    if (!payload.empty() && payload.size() % 4 == 0) {
+        bool valid    = true;
+        int  padsSeen = 0;
 
-    for (int i = 0; i < static_cast<int>(payload.size()); ++i) {
-        const unsigned char c          = static_cast<unsigned char>(payload[i]);
-        const bool          isPad      = (c == '=');
-        const bool          isAlpha    = std::isalpha(c) != 0;
-        const bool          isDigit    = std::isdigit(c) != 0;
-        const bool          isSpecial  = (c == '+' || c == '/');
-        const bool          isValidB64 = isAlpha || isDigit || isSpecial;
+        for (int i = 0; i < static_cast<int>(payload.size()); ++i) {
+            unsigned char c         = static_cast<unsigned char>(payload[i]);
+            bool          isPad     = (c == '=');
+            bool          isAlpha   = std::isalpha(c) != 0;
+            bool          isDigit   = std::isdigit(c) != 0;
+            bool          isSpecial = (c == '+' || c == '/');
+            bool          isValidB64 = isAlpha || isDigit || isSpecial;
 
-        // Rule 3: '=' padding may only appear in the final two positions
-        const bool isInLastTwo = (i >= static_cast<int>(payload.size()) - 2);
+            // Rule 3: '=' padding may only appear in the final two positions.
+            bool isInLastTwo = (i >= static_cast<int>(payload.size()) - 2);
 
-        // Check validity before updating state
-        valid = valid && (isPad ? isInLastTwo : (isValidB64 && padsSeen == 0));
+            // Accumulate validity — once false it stays false.
+            valid = valid && (isPad ? isInLastTwo : (isValidB64 && padsSeen == 0));
 
-        // Update padding counter after check so padsSeen reflects chars before index i
-        padsSeen += isPad ? 1 : 0;
-    }
-
-    // Rule 2 (aggregate): at most two padding characters permitted
-    valid = valid && (padsSeen <= 2);
-
-    // Rule 4: dry-run decode — confirm the string decodes without error
-    if (valid) {
-        try {
-            Base64Codec::decode(payload);
-        } catch (...) {
-            valid = false;
+            // Track padding count after the check so padsSeen reflects chars before i.
+            padsSeen += isPad ? 1 : 0;
         }
+
+        // Rule 2 (aggregate): at most two padding characters permitted.
+        valid = valid && (padsSeen <= 2);
+
+        // Rule 4: dry-run decode to confirm the string decodes without error.
+        if (valid) {
+            try {
+                Base64Codec::decode(payload);
+            } catch (...) {
+                valid = false;
+            }
+        }
+
+        result = valid;
     }
 
-    return valid;
+    return result;
 }
 
 std::string ReportGenerator::jsonEscape(const std::string& s)
 {
     std::ostringstream oss;
     for (int i = 0; i < static_cast<int>(s.size()); ++i) {
-        const char c = s[i];
+        char c = s[i];
         if      (c == '"')  oss << "\\\"";
         else if (c == '\\') oss << "\\\\";
         else if (c == '\n') oss << "\\n";
@@ -149,7 +178,7 @@ std::string ReportGenerator::jsonEscape(const std::string& s)
 
 std::string ReportGenerator::utcTimestamp()
 {
-    const std::time_t now = std::time(nullptr);
+    std::time_t now = std::time(nullptr);
     char buf[32] = {};
     const struct tm* gmt = std::gmtime(&now);
     std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", gmt);
