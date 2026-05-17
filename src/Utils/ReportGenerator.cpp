@@ -28,7 +28,7 @@ namespace AIGD {
 // Single-return form: success is initialised to false and set to true only
 // after the file is written successfully (no early return on file-open failure).
 bool ReportGenerator::generateReport(const std::string& filepath,
-                                      const IntelManager& intelManager,
+                                      const IIntelligenceManager& intelManager,
                                       bool missionSuccess)
 {
     std::vector<IntelData> records = intelManager.getAllIntel();

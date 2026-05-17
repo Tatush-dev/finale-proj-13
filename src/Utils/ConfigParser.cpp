@@ -23,8 +23,7 @@ std::string ConfigParser::readFile(const std::string& filename) {
 //   1. Find the key string ("section_name") in the JSON.
 //   2. Locate the opening brace '{' that follows the key.
 //   3. Walk forward using a depth counter to find the matching closing brace
-//      (handles nested objects).  A boolean flag drives loop exit so no
-//      break or continue is used.
+//      (handles nested objects).  
 //   4. Return the content between the braces, or "" if any step fails.
 //
 // Single-return form: result defaults to "" and is only set when all
@@ -40,7 +39,6 @@ std::string ConfigParser::extractSection(const std::string& json,
 
         if (braceOpen != std::string::npos) {
             // Walk forward tracking brace depth to find the matching '}'.
-            // No break/continue: a boolean flag controls loop exit.
             int    depth    = 1;
             size_t i        = braceOpen + 1;
             bool   finished = false;
@@ -79,7 +77,7 @@ std::string ConfigParser::extractSection(const std::string& json,
 //   2. Locate the ':' separator that follows.
 //   3. Skip leading whitespace after the colon.
 //   4. Consume numeric characters (digits, '.', '-', '+', 'e', 'E') into a
-//      substring.  A boolean flag drives loop exit (no break/continue).
+//      substring.  A boolean flag drives loop exit 
 //   5. Convert the substring to double via std::stod.
 //
 // Single-return form: result defaults to 0.0.
@@ -101,7 +99,7 @@ double ConfigParser::extractFloat(const std::string& json,
                 ++valueStart;
             }
 
-            // Consume numeric characters. No break/continue: boolean flag ends the loop.
+            // Consume numeric characters. 
             size_t valueEnd = valueStart;
             bool   reading  = true;
             while (valueEnd < json.size() && reading) {
@@ -134,7 +132,6 @@ double ConfigParser::extractFloat(const std::string& json,
 //   2. Locate the ':' separator.
 //   3. Locate the opening '"' of the value.
 //   4. Scan forward for the unescaped closing '"' using an escape-state flag.
-//      No break/continue: a boolean flag drives loop exit.
 //   5. Return the substring between the quotes, or "" if any step fails.
 //
 // Single-return form: result defaults to "".
@@ -152,7 +149,6 @@ std::string ConfigParser::extractString(const std::string& json,
 
             if (openQuote != std::string::npos) {
                 // Advance past the opening quote and scan for the unescaped closing quote.
-                // No break/continue: boolean flag ends the loop.
                 size_t closeQuote = openQuote + 1;
                 bool   escaped    = false;
                 bool   foundClose = false;

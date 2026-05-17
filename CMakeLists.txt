@@ -6,9 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(ImintDrone
     src/main.cpp
-    src/Model/NavigationModel.cpp
     src/Model/IntelligenceManager.cpp
-    src/Model/IntelManager.cpp
     src/Model/IntelData.cpp
     src/Model/OccupancyGrid.cpp
     src/Utils/SpatialUtilities.cpp

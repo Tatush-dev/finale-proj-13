@@ -1,12 +1,16 @@
 #pragma once
 #include <string>
-#include "../Model/IntelManager.h"
+#include "../Model/IIntelligenceManager.h"
 
 namespace AIGD {
 
 /**
- * Compiles all gathered IntelData from an IntelManager into a structured,
- * prettified JSON report file with per-record Base64 integrity validation.
+ * Compiles all gathered IntelData from an IIntelligenceManager into a
+ * structured, prettified JSON report file with per-record Base64 integrity
+ * validation.
+ *
+ * Accepts the abstract IIntelligenceManager interface so this utility is
+ * decoupled from any concrete storage implementation.
  */
 class ReportGenerator {
 public:
@@ -20,12 +24,12 @@ public:
      *   4. Write to filepath and log the result to stdout.
      *
      * @param filepath        Destination file path (e.g. "mission_report.json").
-     * @param intelManager    Source of collected intelligence records.
+     * @param intelManager    Abstract interface to the collected intelligence store.
      * @param missionSuccess  Overall mission outcome for the report metadata.
      * @return true if the file was written successfully, false otherwise.
      */
     static bool generateReport(const std::string& filepath,
-                                const IntelManager& intelManager,
+                                const IIntelligenceManager& intelManager,
                                 bool missionSuccess = true);
 
 private:
