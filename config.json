@@ -1,0 +1,18 @@
+{
+  "kalman_filter": {
+    "Q": 0.01,
+    "R": 0.09
+  },
+  "mission_points": {
+    "start":  { "x": 0.0, "y": 5.0, "altitude": 50.0 },
+    "target": { "x": 9.0, "y": 5.0, "altitude": 50.0 }
+  },
+  "map_data": {
+    "width": 10,
+    "height": 10,
+    "grid_base64": "Li4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLg=="
+  },
+  "mission_settings": {
+    "navigation_priority": "STEALTH"
+  }
+}
